@@ -78,7 +78,7 @@
                 <div class="absolute -bottom-2 -right-2 bg-red-600 text-xs font-bold px-3 py-1 rounded-full border border-red-400">LOCKED</div>
             </div>
             <div class="mb-8 text-center fade-in z-10">
-                <h1 class="text-3xl font-bold mb-1 tracking-tight">MyAksesibiliti<span class="text-emerald-400">Secure</span></h1>
+                <h1 class="text-3xl font-bold mb-1 tracking-tight">MyID Touch<span class="text-emerald-400">Secure</span></h1>
                 <p class="text-sm opacity-70">Biometrik & Semakan Bantuan</p>
             </div>
             <div class="w-full max-w-sm space-y-4 fade-in z-10">
@@ -313,7 +313,7 @@
     <script>
         // --- DATA & STATE ---
         const DEFAULT_DATA = {
-            name: "Esmadi Petronas", ic: "850101-14-1234", category: "OKU (Pendengaran)",
+            name: "Ali bin Abu", ic: "850101-14-1234", category: "OKU (Pendengaran)",
             incomeGroup: "B40", // New Field
             blood: "O+", allergies: "Kacang Tanah", iceName: "Siti Aminah", icePhone: "0123456789"
         };
@@ -367,7 +367,7 @@
             const mainBg = document.getElementById('main-bg');
 
             if(currentUserRole === 'public') {
-                document.getElementById('header-title').innerText = "MyAksesibiliti";
+                document.getElementById('header-title').innerText = "MyID Touch";
                 document.getElementById('header-role-badge').innerText = "AWAM";
                 nav.innerHTML = `
                     <button onclick="switchTab('card')" id="nav-card" class="nav-btn flex-1 py-3 text-blue-600 border-t-2 border-blue-600"><i class="fa-solid fa-address-card block text-xl mb-1"></i><span class="text-[10px]">Kad</span></button>
@@ -559,4 +559,5 @@
         function closeModal() { document.getElementById('modal-result').classList.add('hidden'); }
     </script>
 </body>
+
 </html>
