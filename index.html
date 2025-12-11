@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart IC: Secure Access</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- QR Code Generator & Scanner -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root { --primary-bg: #f3f4f6; --text-main: #1f2937; }
+        .high-contrast { --primary-bg: #000000; --text-main: #ffff00; }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--primary-bg); color: var(--text-main); transition: background 0.3s; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .sos-pulse { animation: pulse-red 1.5s infinite; }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
+
+        /* Hologram Effect */
+        .hologram-card { position: relative; overflow: hidden; }
+        .hologram-card::before {
+            content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.2) 45%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0.2) 55%, transparent 60%);
+            transform: rotate(25deg); animation: sheen 6s infinite linear; pointer-events: none;
+        }
+        @keyframes sheen { 0% { transform: translateX(-100%) rotate(25deg); } 100% { transform: translateX(100%) rotate(25deg); } }
+
+        /* Scanner Laser */
+        @keyframes scan-line { 0% { top: 0%; } 100% { top: 100%; } }
+        .animate-scan-line { animation: scan-line 1.5s linear infinite; }
+        
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        .animate-shake { animation: shake 0.3s ease-in-out; }
+
+        .high-contrast .bg-white { background-color: #000; border: 2px solid #ffff00; color: #ffff00; }
+        .high-contrast .text-gray-500 { color: #00ff00; }
+        .high-contrast input, .high-contrast select { background-color: #000; color: #fff; border-color: #fff; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- HEADER -->
+    <header class="bg-blue-900 text-white p-4 shadow-md z-10 flex justify-between items-center hidden" id="app-header">
+        <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold"><i class="fa-solid fa-id-card"></i> <span id="header-title">Smart IC</span></h1>
+            <div class="text-[10px] bg-blue-700 px-2 py-1 rounded" id="header-role-badge">Awam</div>
+        </div>
+        <div class="flex gap-3 items-center">
+             <button onclick="toggleContrast()" class="bg-blue-800 p-2 rounded-full w-8 h-8 flex items-center justify-center border border-blue-400"><i class="fa-solid fa-circle-half-stroke text-xs"></i></button>
+             <button onclick="logout()" class="text-gray-300 hover:text-white text-sm"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 overflow-y-auto relative pb-20 w-full h-full bg-gray-50 dark:bg-gray-900" id="main-bg">
+        
+        <!-- === VIEW: LOGIN (LOCKED) === -->
+        <div id="view-auth" class="h-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-slate-900 to-slate-800 text-white relative">
+            <div class="mb-6 relative">
+                <div class="w-32 h-32 bg-white/5 rounded-full flex items-center justify-center border border-white/10 shadow-[0_0_40px_rgba(239,68,68,0.2)]">
+                    <i class="fa-solid fa-lock text-5xl text-red-500 drop-shadow-lg"></i>
+                </div>
+                <div class="absolute -bottom-2 -right-2 bg-red-600 text-xs font-bold px-3 py-1 rounded-full border border-red-400">LOCKED</div>
+            </div>
+            <div class="mb-8 text-center fade-in z-10">
+                <h1 class="text-3xl font-bold mb-1 tracking-tight">MyID Touch<span class="text-emerald-400">Secure</span></h1>
+                <p class="text-sm opacity-70">Sistem Identiti Digital</p>
+            </div>
+            <div class="w-full max-w-sm space-y-4 fade-in z-10">
+                
+                <!-- Biometric Button -->
+                <button onclick="startBiometricAuth('public')" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 text-white py-4 rounded-2xl font-bold shadow-[0_10px_20px_rgba(16,185,129,0.2)] hover:from-emerald-500 transition flex items-center justify-center gap-3 border border-emerald-400/50">
+                    <i class="fa-solid fa-fingerprint text-xl"></i> 
+                    <span>IMBAS CAP JARI</span>
+                </button>
+
+                <!-- PIN Button -->
+                <button onclick="showPinLogin()" class="w-full bg-white text-slate-900 py-3 rounded-xl font-bold shadow hover:bg-gray-100 transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-keyboard"></i> Guna Nombor PIN
+                </button>
+
+                <div class="flex items-center gap-4 text-xs text-slate-500 my-1">
+                    <div class="h-px bg-slate-700 flex-1"></div> Pegawai <div class="h-px bg-slate-700 flex-1"></div>
+                </div>
+
+                <!-- Gov Button -->
+                <button onclick="showGovLogin()" class="w-full bg-slate-700/30 border border-slate-500/30 text-slate-400 py-3 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-building-shield"></i> Log Masuk Pegawai
+                </button>
+            </div>
+        </div>
+
+        <!-- === VIEW: BIO SCANNER (SIMULATED) === -->
+        <div id="view-bio-scan" class="hidden fixed inset-0 bg-black z-50 flex flex-col">
+            <div class="absolute top-0 left-0 right-0 p-4 z-20 flex justify-between bg-black/40 backdrop-blur-md">
+                <button onclick="closeBioScanner()" class="text-white text-sm">Batal</button>
+                <span class="text-white text-xs font-bold">MENCARI JARI...</span>
+                <div class="w-8"></div>
+            </div>
+            <div class="flex-1 relative overflow-hidden flex items-center justify-center bg-slate-900">
+                <video id="bio-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="w-72 h-72 border-4 border-emerald-500/50 rounded-full flex items-center justify-center relative">
+                        <div class="absolute inset-0 border-4 border-t-emerald-400 rounded-full animate-spin"></div>
+                    </div>
+                    <p class="text-white mt-8 font-bold animate-pulse">Analisis AI Sedang Berjalan...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- === VIEW: PUBLIC CARD === -->
+        <div id="view-card" class="p-4 space-y-6 hidden max-w-md mx-auto fade-in">
+            <!-- Biometric Badge -->
+            <div id="bio-verified-badge" class="hidden bg-emerald-100 border border-emerald-300 text-emerald-800 p-3 rounded-xl flex items-center gap-3 shadow-sm">
+                <div class="bg-emerald-500 text-white w-8 h-8 rounded-full flex items-center justify-center shrink-0"><i class="fa-solid fa-check"></i></div>
+                <div><p class="text-xs font-bold uppercase">Identiti Disahkan</p><p class="text-[10px] opacity-80" id="bio-summary">Biometric Match 99%</p></div>
+            </div>
+
+            <!-- PIN Badge -->
+            <div id="pin-verified-badge" class="hidden bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-xl flex items-center gap-3 shadow-sm">
+                <div class="bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center shrink-0"><i class="fa-solid fa-key"></i></div>
+                <div><p class="text-xs font-bold uppercase">Akses Melalui PIN</p><p class="text-[10px] opacity-80">Manual Entry</p></div>
+            </div>
+
+            <!-- BANTUAN ELIGIBILITY CARD (DYNAMIC) -->
+            <div id="aid-status-card" class="hidden rounded-xl p-4 shadow-md border-l-4 flex flex-col gap-2">
+                <!-- Content injected via JS -->
+            </div>
+
+            <!-- Hologram Card -->
+            <div class="hologram-card bg-gradient-to-br from-blue-700 to-indigo-900 text-white rounded-2xl p-5 shadow-2xl relative">
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Coat_of_arms_of_Malaysia.svg/1200px-Coat_of_arms_of_Malaysia.svg.png" class="h-10 opacity-90">
+                    <div class="text-right"><p class="text-[10px] uppercase opacity-80">MyKad Digital</p><p class="text-sm font-bold">MALAYSIA</p></div>
+                </div>
+                <div class="flex gap-4 items-center relative z-10">
+                    <div class="h-16 w-16 bg-white/20 backdrop-blur-md rounded-lg flex items-center justify-center border border-white/30"><i class="fa-solid fa-user text-3xl text-white/80"></i></div>
+                    <div>
+                        <h2 class="text-lg font-bold truncate w-48" id="card-name">...</h2>
+                        <p class="text-sm font-mono opacity-90" id="card-ic">...</p>
+                        <div class="flex gap-2 mt-1">
+                            <span class="bg-yellow-400 text-blue-900 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm" id="card-category">...</span>
+                            <span class="bg-white text-blue-900 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm" id="card-income">...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-between items-end relative z-10">
+                    <div class="text-xs opacity-80"><i class="fa-solid fa-wifi rotate-90 mr-1"></i>NFC Aktif</div>
+                    <div class="bg-white p-1.5 rounded shadow-lg"><div id="card-qr-small" class="w-12 h-12"></div></div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="triggerSOS()" class="bg-red-600 text-white p-4 rounded-xl font-bold shadow-lg sos-pulse flex flex-col items-center justify-center gap-1 active:scale-95 transition">
+                    <i class="fa-solid fa-bell-exclamation text-2xl"></i>
+                    <span class="text-xs">SOS</span>
+                </button>
+                <div class="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center justify-center">
+                    <div id="main-qr-display" class="scale-75 origin-center"></div>
+                </div>
+            </div>
+
+            <!-- Vital Stats -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-white p-3 rounded-xl border-l-4 border-red-500 shadow-sm">
+                    <p class="text-[10px] text-gray-400 font-bold mb-1 uppercase">Jenis Darah</p>
+                    <p class="text-xl font-bold text-gray-800" id="status-blood">-</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl border-l-4 border-orange-500 shadow-sm">
+                    <p class="text-[10px] text-gray-400 font-bold mb-1 uppercase">Alergi Utama</p>
+                    <p class="text-sm font-bold text-gray-800 truncate" id="status-allergy">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- === VIEW: PROFILE EDIT === -->
+        <div id="view-profile" class="p-4 pb-24 hidden max-w-md mx-auto fade-in">
+             <div class="flex justify-between items-center mb-4">
+                 <h2 class="text-xl font-bold text-gray-800">Profil Saya</h2>
+                 <button onclick="resetData()" class="text-xs text-red-500 underline">Reset Data</button>
+             </div>
+             <div class="bg-white rounded-xl p-5 shadow-sm space-y-4 border border-gray-100">
+                <!-- PIN SETTING -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <label class="text-xs font-bold text-slate-600">PIN Keselamatan (6 Digit)</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="text" id="input-pin" class="w-full p-2 border rounded font-mono text-center tracking-widest" maxlength="6" placeholder="******">
+                        <button onclick="togglePinVisibility()" class="p-2 text-gray-400"><i class="fa-solid fa-eye"></i></button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">Digunakan jika biometrik gagal.</p>
+                </div>
+
+                <div><label class="text-xs font-bold text-blue-600">Nama Penuh</label><input type="text" id="input-name" class="w-full p-2 border-b-2 outline-none"></div>
+                <div><label class="text-xs font-bold text-blue-600">No. KP</label><input type="text" id="input-ic" class="w-full p-2 border-b-2 outline-none"></div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                     <div>
+                        <label class="text-xs font-bold text-gray-500">Kategori</label>
+                        <select id="input-category" class="w-full p-2 mt-1 border rounded bg-gray-50 text-sm">
+                            <option value="Warga Emas">Warga Emas</option>
+                            <option value="OKU (Fizikal)">OKU (Fizikal)</option>
+                            <option value="OKU (Pendengaran)">OKU (Pendengaran)</option>
+                            <option value="Kanak-kanak">Kanak-kanak</option>
+                            <option value="Normal">Normal</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500">Pendapatan</label>
+                        <select id="input-income" class="w-full p-2 mt-1 border rounded bg-gray-50 text-sm font-bold">
+                            <option value="B40">B40 (< RM4,850)</option>
+                            <option value="M40">M40</option>
+                            <option value="T20">T20</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="text-xs font-bold text-gray-500">Darah</label><select id="input-blood" class="w-full p-2 mt-1 border rounded bg-gray-50 text-sm"><option>A+</option><option>B+</option><option>O+</option><option>AB+</option></select></div>
+                </div>
+                <div><label class="text-xs font-bold text-gray-500">Alergi</label><textarea id="input-allergies" class="w-full p-2 mt-1 border rounded h-16 text-sm"></textarea></div>
+                
+                <div class="bg-blue-50 p-3 rounded-lg">
+                    <p class="text-xs font-bold text-blue-800 mb-2 uppercase">Kontak Kecemasan (ICE)</p>
+                    <input type="text" id="input-ice-name" placeholder="Nama Waris" class="w-full p-2 border rounded mb-2 text-sm">
+                    <input type="tel" id="input-ice-phone" placeholder="No. Telefon" class="w-full p-2 border rounded text-sm">
+                </div>
+                <button onclick="saveData()" class="w-full bg-blue-700 text-white p-3 rounded-lg font-bold shadow hover:bg-blue-800"><i class="fa-solid fa-floppy-disk mr-2"></i> Simpan</button>
+             </div>
+        </div>
+
+        <!-- === VIEW: GOV DASHBOARD === -->
+        <div id="view-dashboard" class="hidden p-4 space-y-4 max-w-md mx-auto fade-in">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-green-600 text-white p-4 rounded-xl shadow-lg">
+                    <p class="text-2xl font-bold" id="stat-scans">12</p>
+                    <p class="text-xs opacity-80">Imbasan Hari Ini</p>
+                </div>
+                <div class="bg-purple-600 text-white p-4 rounded-xl shadow-lg">
+                    <p class="text-2xl font-bold" id="stat-aid">5</p>
+                    <p class="text-xs opacity-80">Penerima Bantuan (B40)</p>
+                </div>
+            </div>
+            <h3 class="font-bold text-gray-700 mt-2">Aktiviti Terkini</h3>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                <ul class="divide-y divide-gray-100" id="recent-scans-list">
+                    <li class="p-3 text-sm text-center text-gray-400">Tiada rekod imbasan.</li>
+                </ul>
+            </div>
+            <button onclick="switchTab('scanner')" class="w-full py-4 bg-gray-800 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2"><i class="fa-solid fa-camera"></i> Mula Mengimbas</button>
+        </div>
+
+        <!-- === VIEW: SCANNER (GOV) === -->
+        <div id="view-scanner" class="hidden h-full flex flex-col fade-in bg-black">
+             <div class="relative flex-1 flex flex-col items-center justify-center">
+                 <div class="absolute top-4 bg-black/50 text-green-400 px-4 py-1 rounded-full text-xs font-mono border border-green-500 z-20">GOV_NETWORK_SECURE</div>
+                 <div class="relative w-72 h-72 rounded-3xl overflow-hidden border-4 border-green-500 shadow-[0_0_50px_rgba(34,197,94,0.3)] z-10" id="scan-frame">
+                    <div id="reader" class="w-full h-full bg-gray-900"></div>
+                    <div class="absolute top-0 w-full h-1 bg-green-500 shadow-[0_0_10px_#22c55e] animate-scan-line"></div>
+                 </div>
+                 <div class="mt-8 flex gap-4 z-20" id="scan-controls">
+                     <button onclick="startScan()" class="bg-green-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition border-4 border-green-800"><i class="fa-solid fa-camera text-2xl"></i></button>
+                     <button onclick="stopCamera()" class="bg-red-600 text-white w-16 h-16 rounded-full hidden flex items-center justify-center" id="btn-stop"><i class="fa-solid fa-stop text-2xl"></i></button>
+                 </div>
+             </div>
+        </div>
+
+    </main>
+
+    <!-- NAVIGATION -->
+    <nav id="bottom-nav" class="bg-white border-t border-gray-200 fixed bottom-0 w-full z-20 hidden shadow-[0_-5px_20px_rgba(0,0,0,0.05)] pb-safe"><div class="max-w-md mx-auto flex justify-around" id="nav-items-container"></div></nav>
+
+    <!-- PIN LOGIN MODAL (USER) -->
+    <div id="modal-pin-login" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-xs rounded-2xl p-6 shadow-2xl relative">
+            <button onclick="closePinLogin()" class="absolute top-2 right-4 text-gray-400 text-2xl">&times;</button>
+            <h3 class="font-bold text-gray-800 text-center text-lg mb-1">Masukkan PIN</h3>
+            <p class="text-xs text-center text-gray-500 mb-4">6 digit nombor sekuriti anda.</p>
+            <input type="password" inputmode="numeric" id="user-pin-input" class="w-full text-center text-3xl tracking-[0.5em] font-mono p-3 border-2 border-slate-200 rounded-xl mb-4 focus:border-blue-600 outline-none" maxlength="6" placeholder="******">
+            <button onclick="verifyUserPin()" class="w-full py-3 bg-blue-700 text-white rounded-xl font-bold hover:bg-blue-800">Masuk</button>
+            <p class="text-[10px] text-center mt-3 text-gray-400">PIN Asal: 123456</p>
+        </div>
+    </div>
+
+    <!-- GOV AUTH MODAL -->
+    <div id="modal-gov-login" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-xs rounded-2xl p-6 shadow-2xl relative">
+            <button onclick="closeGovLogin()" class="absolute top-2 right-4 text-gray-400 text-2xl">&times;</button>
+            <h3 class="font-bold text-gray-800 text-center">Akses Pegawai</h3>
+            <p class="text-xs text-center mb-4 text-gray-500">Kod: 1234</p>
+            <input type="password" id="gov-pass" class="w-full text-center text-3xl tracking-widest font-mono p-3 border-2 rounded-xl mb-4" maxlength="4">
+            <button onclick="verifyGov()" class="w-full py-3 bg-blue-900 text-white rounded-xl font-bold">Sahkan</button>
+        </div>
+    </div>
+
+    <!-- RESULT MODAL -->
+    <div id="modal-result" class="fixed inset-0 bg-black/80 z-50 hidden flex items-end sm:items-center justify-center backdrop-blur-md">
+        <div class="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl animate-[slideUp_0.3s_ease-out]">
+            <div class="bg-blue-900 p-4 text-white flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/20 p-2 rounded-full"><i class="fa-solid fa-file-invoice text-xl"></i></div>
+                    <div><h3 class="font-bold text-sm uppercase">Data Rakyat</h3><p class="text-[10px] opacity-80">Disahkan JPN/LHDN</p></div>
+                </div>
+                <button onclick="closeModal()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                <div class="text-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800" id="res-name">-</h2>
+                    <p class="text-sm text-gray-500" id="res-ic">-</p>
+                    <div class="flex justify-center gap-2 mt-2">
+                        <span class="bg-gray-100 text-gray-800 text-xs font-bold px-3 py-1 rounded-full" id="res-category">-</span>
+                        <span class="text-xs font-bold px-3 py-1 rounded-full" id="res-income-badge">-</span>
+                    </div>
+                </div>
+                
+                <!-- AID ELIGIBILITY SECTION (GOV VIEW) -->
+                <div id="res-aid-section" class="hidden mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div class="flex items-center gap-2 mb-1">
+                        <i class="fa-solid fa-circle-check text-green-600"></i>
+                        <span class="text-sm font-bold text-green-800">LAYAK BANTUAN (STR)</span>
+                    </div>
+                    <p class="text-xs text-green-700 ml-6">Pemegang kad ini layak menerima bantuan tunai kerajaan bagi kategori B40.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-gray-50 p-3 rounded-lg text-center border"><span class="text-xs text-gray-500 block uppercase">Darah</span><span class="text-xl font-bold text-gray-800" id="res-blood">-</span></div>
+                    <div class="bg-red-50 p-3 rounded-lg text-center border border-red-100"><span class="text-xs text-red-500 block uppercase">Alergi</span><span class="text-sm font-bold text-gray-800" id="res-allergies">-</span></div>
+                </div>
+
+                <div class="bg-green-50 p-3 rounded-xl border border-green-200 flex justify-between items-center">
+                    <div><p class="font-bold text-gray-800 text-sm" id="res-ice-name">-</p><p class="text-xs text-green-700">Waris</p></div>
+                    <a href="#" id="btn-call" class="bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow"><i class="fa-solid fa-phone"></i></a>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-2 text-center border-t"><p class="text-[10px] text-gray-400"><i class="fa-solid fa-location-dot"></i> Lokasi: <span id="res-geo">...</span></p></div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA & STATE ---
+        const DEFAULT_DATA = {
+            name: "Ali Bin Abu", ic: "850101-14-1234", category: "OKU (Pendengaran)",
+            incomeGroup: "B40", 
+            pin: "123456", // Default PIN
+            blood: "O+", allergies: "Kacang Tanah", iceName: "Rey", icePhone: "0109507043"
+        };
+        let userData = { ...DEFAULT_DATA };
+        let currentUserRole = null;
+        let html5QrCode = null; let isScanning = false;
+        let recentScans = [];
+        let aidCounter = 0; 
+        const apiKey = ""; 
+
+        // --- INIT ---
+        window.onload = () => { loadFromStorage(); };
+
+        // --- STORAGE ---
+        function loadFromStorage() {
+            const saved = localStorage.getItem('smart_ic_data');
+            if(saved) userData = JSON.parse(saved);
+        }
+        function saveToStorage() { localStorage.setItem('smart_ic_data', JSON.stringify(userData)); }
+        function resetData() { 
+            if(confirm("Reset data?")) { localStorage.removeItem('smart_ic_data'); userData = { ...DEFAULT_DATA }; loadDataToUI(); generateQR(); alert("Reset."); }
+        }
+
+        // --- UI & LOGIC ---
+        function toggleContrast() { document.body.classList.toggle('high-contrast'); }
+        
+        // --- LOGIN LOGIC ---
+        function loginAs(role, method) {
+            currentUserRole = role;
+            
+            // Hide all login modals
+            closePinLogin();
+            closeGovLogin();
+            closeBioScanner();
+
+            // Toggle Badges
+            document.getElementById('bio-verified-badge').classList.add('hidden');
+            document.getElementById('pin-verified-badge').classList.add('hidden');
+
+            if(role === 'public') {
+                if(method === 'bio') document.getElementById('bio-verified-badge').classList.remove('hidden');
+                if(method === 'pin') document.getElementById('pin-verified-badge').classList.remove('hidden');
+            }
+            setupUI();
+        }
+
+        // --- GOV AUTH ---
+        function showGovLogin() { document.getElementById('modal-gov-login').classList.remove('hidden'); document.getElementById('gov-pass').focus(); }
+        function closeGovLogin() { document.getElementById('modal-gov-login').classList.add('hidden'); }
+        function verifyGov() {
+            if(document.getElementById('gov-pass').value === '1234') { loginAs('gov'); }
+            else { shakeModal('modal-gov-login'); }
+        }
+
+        // --- PIN AUTH ---
+        function showPinLogin() { document.getElementById('modal-pin-login').classList.remove('hidden'); document.getElementById('user-pin-input').value = ''; document.getElementById('user-pin-input').focus(); }
+        function closePinLogin() { document.getElementById('modal-pin-login').classList.add('hidden'); }
+        function verifyUserPin() {
+            const input = document.getElementById('user-pin-input').value;
+            if(input === userData.pin) {
+                loginAs('public', 'pin');
+            } else {
+                shakeModal('modal-pin-login');
+                document.getElementById('user-pin-input').value = '';
+            }
+        }
+        function togglePinVisibility() {
+            const input = document.getElementById('input-pin');
+            input.type = input.type === "password" ? "text" : "password";
+        }
+
+        function shakeModal(id) {
+            const m = document.getElementById(id).firstElementChild;
+            m.classList.add('animate-shake'); setTimeout(()=>m.classList.remove('animate-shake'),300);
+        }
+        function logout() { location.reload(); }
+
+        function setupUI() {
+            document.getElementById('view-auth').classList.add('hidden');
+            document.getElementById('app-header').classList.remove('hidden');
+            const nav = document.getElementById('nav-items-container');
+            const mainBg = document.getElementById('main-bg');
+
+            if(currentUserRole === 'public') {
+                document.getElementById('header-title').innerText = "MyID Touch";
+                document.getElementById('header-role-badge').innerText = "AWAM";
+                nav.innerHTML = `
+                    <button onclick="switchTab('card')" id="nav-card" class="nav-btn flex-1 py-3 text-blue-600 border-t-2 border-blue-600"><i class="fa-solid fa-address-card block text-xl mb-1"></i><span class="text-[10px]">Kad</span></button>
+                    <button onclick="switchTab('profile')" id="nav-profile" class="nav-btn flex-1 py-3 text-gray-400"><i class="fa-solid fa-user-pen block text-xl mb-1"></i><span class="text-[10px]">Profil</span></button>
+                `;
+                loadDataToUI(); generateQR(); switchTab('card');
+            } else {
+                document.getElementById('header-title').innerText = "Enforcement";
+                document.getElementById('header-role-badge').innerText = "PEGAWAI";
+                document.getElementById('header-role-badge').className = "text-[10px] bg-green-600 px-2 py-1 rounded";
+                mainBg.className = "flex-1 overflow-y-auto relative pb-20 w-full h-full bg-white";
+                nav.innerHTML = `
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex-1 py-3 text-green-600 border-t-2 border-green-600"><i class="fa-solid fa-chart-pie block text-xl mb-1"></i><span class="text-[10px]">Utama</span></button>
+                    <button onclick="switchTab('scanner')" id="nav-scanner" class="nav-btn flex-1 py-3 text-gray-400"><i class="fa-solid fa-qrcode block text-xl mb-1"></i><span class="text-[10px]">Imbas</span></button>
+                `;
+                switchTab('dashboard');
+            }
+            document.getElementById('bottom-nav').classList.remove('hidden');
+        }
+
+        function switchTab(tabId) {
+            if(tabId!=='scanner' && isScanning) stopCamera();
+            ['view-card','view-profile','view-scanner','view-dashboard'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+            document.getElementById('view-'+tabId).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(btn=>btn.className="nav-btn flex-1 py-3 text-gray-400");
+            const activeColor = currentUserRole==='public'?'text-blue-600 border-blue-600':'text-green-600 border-green-600';
+            const btn=document.getElementById('nav-'+tabId);
+            if(btn) btn.className=`nav-btn flex-1 py-3 border-t-2 ${activeColor}`;
+        }
+
+        // --- PUBLIC FUNCTIONS ---
+        function loadDataToUI() {
+            // Fill Card
+            document.getElementById('card-name').innerText = userData.name;
+            document.getElementById('card-ic').innerText = userData.ic;
+            document.getElementById('card-category').innerText = userData.category;
+            document.getElementById('card-income').innerText = userData.incomeGroup;
+            document.getElementById('status-blood').innerText = userData.blood;
+            document.getElementById('status-allergy').innerText = userData.allergies;
+
+            // Handle Aid Status Card
+            const aidCard = document.getElementById('aid-status-card');
+            if(userData.incomeGroup === 'B40') {
+                aidCard.classList.remove('hidden');
+                aidCard.classList.add('bg-green-50', 'border-green-500');
+                aidCard.innerHTML = `<p class="text-[10px] font-bold text-green-600 uppercase mb-1">Status Kebajikan</p><div class="flex items-center gap-3"><div class="bg-green-200 p-2 rounded-full text-green-800"><i class="fa-solid fa-hand-holding-dollar"></i></div><div><p class="font-bold text-green-900 text-sm">LAYAK BANTUAN KERAJAAN</p><p class="text-[10px] text-green-700">Sumbangan Tunai Rahmah (STR) Aktif</p></div></div>`;
+            } else {
+                aidCard.classList.remove('hidden');
+                aidCard.classList.add('bg-gray-50', 'border-gray-300');
+                aidCard.classList.remove('bg-green-50', 'border-green-500');
+                aidCard.innerHTML = `<p class="text-[10px] font-bold text-gray-500 uppercase mb-1">Status Kebajikan</p><div class="flex items-center gap-3 opacity-60"><div class="bg-gray-200 p-2 rounded-full text-gray-600"><i class="fa-solid fa-ban"></i></div><div><p class="font-bold text-gray-700 text-sm">TIADA BANTUAN AKTIF</p><p class="text-[10px] text-gray-500">Kategori ${userData.incomeGroup}</p></div></div>`;
+            }
+
+            // Fill Form
+            document.getElementById('input-name').value = userData.name;
+            document.getElementById('input-ic').value = userData.ic;
+            document.getElementById('input-category').value = userData.category;
+            document.getElementById('input-income').value = userData.incomeGroup;
+            document.getElementById('input-pin').value = userData.pin; // Fill PIN
+            document.getElementById('input-blood').value = userData.blood;
+            document.getElementById('input-allergies').value = userData.allergies;
+            document.getElementById('input-ice-name').value = userData.iceName;
+            document.getElementById('input-ice-phone').value = userData.icePhone;
+        }
+
+        function saveData() {
+            userData.name = document.getElementById('input-name').value;
+            userData.ic = document.getElementById('input-ic').value;
+            userData.category = document.getElementById('input-category').value;
+            userData.incomeGroup = document.getElementById('input-income').value;
+            userData.pin = document.getElementById('input-pin').value; // Save PIN
+            userData.blood = document.getElementById('input-blood').value;
+            userData.allergies = document.getElementById('input-allergies').value;
+            userData.iceName = document.getElementById('input-ice-name').value;
+            userData.icePhone = document.getElementById('input-ice-phone').value;
+            
+            saveToStorage(); loadDataToUI(); generateQR();
+            alert("Profil dikemaskini."); switchTab('card');
+        }
+
+        function generateQR() {
+            document.getElementById("main-qr-display").innerHTML = "";
+            document.getElementById("card-qr-small").innerHTML = "";
+            const qrData = JSON.stringify(userData);
+            try {
+                new QRCode(document.getElementById("main-qr-display"), { text: qrData, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.L });
+                new QRCode(document.getElementById("card-qr-small"), { text: qrData, width: 45, height: 45, correctLevel: QRCode.CorrectLevel.L });
+            } catch(e) {}
+        }
+        
+        function triggerSOS() { window.open(`https://wa.me/${userData.icePhone}?text=SOS`); }
+
+        // --- GOV SCANNER & BIOMETRIC MOCK ---
+        async function startBiometricAuth() {
+             document.getElementById('view-bio-scan').classList.remove('hidden');
+             const video = document.getElementById('bio-video');
+             try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                setTimeout(() => {
+                    stream.getTracks().forEach(t=>t.stop());
+                    document.getElementById('view-bio-scan').classList.add('hidden');
+                    alert("Akses Biometrik Dibenarkan.");
+                    loginAs('public', 'bio');
+                }, 2500);
+             } catch(e) { 
+                 if(confirm("Kamera gagal. Guna Nombor PIN?")) {
+                    closeBioScanner();
+                    showPinLogin();
+                 } else {
+                    closeBioScanner();
+                 }
+            }
+        }
+        function closeBioScanner() { document.getElementById('view-bio-scan').classList.add('hidden'); }
+
+        // --- SCANNER LOGIC ---
+        function startScan() {
+             document.getElementById('scan-controls').children[0].classList.add('hidden');
+             document.getElementById('btn-stop').classList.remove('hidden');
+             
+             html5QrCode = new Html5Qrcode("reader");
+             const config = { fps: 10, qrbox: 250 };
+             
+             html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+                 // Successfully scanned
+                 stopCamera(); 
+                 
+                 try { 
+                     const data = JSON.parse(text);
+                     
+                     // Update Recent Scans Dashboard
+                     const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                     const list = document.getElementById('recent-scans-list');
+                     if(list.children[0] && list.children[0].innerText.includes('Tiada')) list.innerHTML='';
+                     
+                     const li = document.createElement('li');
+                     li.className = "p-3 flex justify-between bg-gray-50 border-b";
+                     li.innerHTML = `<div><p class="font-bold text-sm">${data.name}</p><p class="text-[10px] text-gray-500">${now}</p></div><span class="text-xs font-bold text-blue-600">${data.incomeGroup || '-'}</span>`;
+                     list.prepend(li);
+                     
+                     // Update Stats
+                     if(data.incomeGroup === 'B40') { 
+                         aidCounter++; 
+                         document.getElementById('stat-aid').innerText = aidCounter; 
+                     }
+                     const scanCountEl = document.getElementById('stat-scans');
+                     scanCountEl.innerText = parseInt(scanCountEl.innerText || 0) + 1;
+
+                     // Show Result Modal
+                     showResult(data); 
+                 } catch(e) { 
+                     console.error(e);
+                     alert("Format QR tidak sah atau bukan pengguna Smart IC."); 
+                 }
+             }, (err) => {
+                 // scanning errors, ignore
+             }).catch(err => {
+                 console.log("Error starting camera", err);
+                 alert("Gagal memulakan kamera. Sila pastikan kebenaran diberikan.");
+                 stopCamera();
+             });
+             
+             isScanning = true;
+        }
+
+        function stopCamera() { 
+            if(html5QrCode && isScanning){ 
+                isScanning = false;
+                // Properly handle the async stop process
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear(); 
+                    document.getElementById('scan-controls').children[0].classList.remove('hidden'); 
+                    document.getElementById('btn-stop').classList.add('hidden'); 
+                }).catch(err => {
+                    console.error("Failed to stop camera", err);
+                    // Force UI reset even if stop fails
+                    document.getElementById('scan-controls').children[0].classList.remove('hidden'); 
+                    document.getElementById('btn-stop').classList.add('hidden'); 
+                });
+            }
+        }
+
+        function showResult(data) {
+            document.getElementById('res-name').innerText = data.name;
+            document.getElementById('res-ic').innerText = data.ic;
+            document.getElementById('res-category').innerText = data.category;
+            document.getElementById('res-blood').innerText = data.blood;
+            document.getElementById('res-allergies').innerText = data.allergies;
+            document.getElementById('res-ice-name').innerText = data.iceName;
+            document.getElementById('btn-call').href = `tel:${data.icePhone}`;
+            
+            const incomeBadge = document.getElementById('res-income-badge');
+            const aidSection = document.getElementById('res-aid-section');
+            
+            incomeBadge.innerText = data.incomeGroup;
+            if(data.incomeGroup === 'B40') {
+                incomeBadge.className = "text-xs font-bold px-3 py-1 rounded-full bg-green-100 text-green-800 border border-green-300";
+                aidSection.classList.remove('hidden');
+            } else if (data.incomeGroup === 'M40') {
+                 incomeBadge.className = "text-xs font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-300";
+                 aidSection.classList.add('hidden');
+            } else {
+                 incomeBadge.className = "text-xs font-bold px-3 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-300";
+                 aidSection.classList.add('hidden');
+            }
+
+            document.getElementById('modal-result').classList.remove('hidden');
+        }
+        function closeModal() { document.getElementById('modal-result').classList.add('hidden'); }
+    </script>
+</body>
+</html>
